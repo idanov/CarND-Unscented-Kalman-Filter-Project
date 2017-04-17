@@ -8,6 +8,9 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
+auto crop = [](float x, float lower){ return fabs(x) > fabs(lower) ? x : lower; };
+float lim = 1e-2;
+
 /**
  * Initializes Unscented Kalman filter
  */
@@ -79,12 +82,55 @@ UKF::~UKF() {}
  * either radar or laser.
  */
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
-  /**
-  TODO:
+  /*****************************************************************************
+   *  Initialization
+   ****************************************************************************/
+  if (!is_initialized_) {
+    // first measurement
+    cout << "Initializing UKF..." << endl;
 
-  Complete this function! Make sure you switch between lidar and radar
-  measurements.
-  */
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      // get measurements from Radar
+      float rho = meas_package.raw_measurements_(0);
+      float phi = meas_package.raw_measurements_(1);
+      float rho_dot = meas_package.raw_measurements_(2);
+
+      // calculate cos/sin of phi
+      float cos_phi = cos(phi);
+      float sin_phi = sin(phi);
+
+      // convert from polar to cartesian coordinates
+      float px = crop(rho * cos_phi, lim);
+      float py = crop(-rho * sin_phi, lim);
+
+      // initialize state
+      x_ << px, py, 0, 0, 0;
+      // set initial timestamp
+      time_us_ = meas_package.timestamp_;
+    }
+    else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+      // initialize position state wiht Lidar measurements
+      float px = crop(meas_package.raw_measurements_(0), lim);
+      float py = crop(meas_package.raw_measurements_(1), lim);
+
+      x_ << px, py, 0, 0, 0;
+      // set initial timestamp
+      time_us_ = meas_package.timestamp_;
+    }
+
+    // done initializing, no need to predict or update
+    is_initialized_ = true;
+    return;
+  }
+
+  /*****************************************************************************
+   *  Prediction
+   ****************************************************************************/
+
+  /*****************************************************************************
+   *  Update
+   ****************************************************************************/
+
 }
 
 /**
