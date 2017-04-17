@@ -33,6 +33,7 @@ UKF::UKF() {
 
   // initial covariance matrix
   P_ = MatrixXd(5, 5);
+  P_.setIdentity(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 0.5;
@@ -328,8 +329,12 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //calculate Kalman gain K;
   MatrixXd K = Tc * S.inverse();
   //update state mean and covariance matrix
-  VectorXd z_diff = z - z_pred;
-  z_diff(1) = angleNorm(z_diff(1));
-  x_ += K * z_diff;
+  VectorXd z_err = z - z_pred;
+  z_err(1) = angleNorm(z_err(1));
+  x_ += K * z_err;
   P_ -= K * S * K.transpose(); 
+  /****************************************************************************
+   * Calculate NIS
+   ***************************************************************************/
+   NIS_radar_ = z_err.transpose() * S.inverse() *  z_err;
 }
