@@ -10,6 +10,10 @@ using std::vector;
 
 auto crop = [](double x, double lower){ return fabs(x) > fabs(lower) ? x : lower; };
 double lim = 1e-2;
+auto angleNorm = [](double theta){
+  const double rem = fmod(theta + M_PI, 2 * M_PI);
+  return rem < 0 ? rem + M_PI : rem - M_PI;
+};
 
 /**
  * Initializes Unscented Kalman filter
@@ -156,13 +160,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  * measurement and this one.
  */
 void UKF::Prediction(double delta_t) {
-  /**
-  TODO:
-
-  Complete this function! Estimate the object's location. Modify the state
-  vector, x_. Predict sigma points, the state, and the state covariance matrix.
-  */
-
   /*****************************************************************************
    *  Generate Sigma Points
    ****************************************************************************/
@@ -180,6 +177,7 @@ void UKF::Prediction(double delta_t) {
 
   //create augmented state covariance
   MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
+  P_aug.fill(0);
   P_aug.topLeftCorner(n_x_, n_x_) = P_;
   P_aug.bottomRightCorner(2, 2) = Q;
 
@@ -237,7 +235,13 @@ void UKF::Prediction(double delta_t) {
   /*****************************************************************************
    *  Predict Mean and Covariance
    ****************************************************************************/
-
+  //predict state mean
+  x_ = Xsig_pred_ * weights_;
+  //predict state covariance matrix
+  MatrixXd X_diff = Xsig_pred_.colwise() - x_;
+  //angle normalization
+  X_diff.row(3) = X_diff.row(3).unaryExpr(angleNorm);
+  P_ = X_diff * weights_.asDiagonal() * X_diff.transpose();
 }
 
 /**
