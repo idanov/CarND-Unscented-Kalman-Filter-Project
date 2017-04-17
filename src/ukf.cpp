@@ -313,5 +313,23 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //measurement covariance matrix S
   MatrixXd S = MatrixXd(n_z,n_z);
   S = Z_diff * weights_.asDiagonal() * Z_diff.transpose() + R;
-
+  /*****************************************************************************
+   *  Update state and covariance
+   ****************************************************************************/
+  //incoming radar measurement
+  VectorXd z = meas_package.raw_measurements_;
+  //create matrix for cross correlation Tc
+  MatrixXd Tc = MatrixXd(n_x_, n_z);
+  //calculate cross correlation matrix
+  MatrixXd X_diff = Xsig_pred_.colwise() - x_;
+  //angle normalization
+  X_diff.row(3) = X_diff.row(3).unaryExpr(angleNorm);
+  Tc = X_diff * weights_.asDiagonal() * Z_diff.transpose();
+  //calculate Kalman gain K;
+  MatrixXd K = Tc * S.inverse();
+  //update state mean and covariance matrix
+  VectorXd z_diff = z - z_pred;
+  z_diff(1) = angleNorm(z_diff(1));
+  x_ += K * z_diff;
+  P_ -= K * S * K.transpose(); 
 }
