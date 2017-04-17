@@ -8,8 +8,8 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
-auto crop = [](float x, float lower){ return fabs(x) > fabs(lower) ? x : lower; };
-float lim = 1e-2;
+auto crop = [](double x, double lower){ return fabs(x) > fabs(lower) ? x : lower; };
+double lim = 1e-2;
 
 /**
  * Initializes Unscented Kalman filter
@@ -91,17 +91,17 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       // get measurements from Radar
-      float rho = meas_package.raw_measurements_(0);
-      float phi = meas_package.raw_measurements_(1);
-      float rho_dot = meas_package.raw_measurements_(2);
+      double rho = meas_package.raw_measurements_(0);
+      double phi = meas_package.raw_measurements_(1);
+      double rho_dot = meas_package.raw_measurements_(2);
 
       // calculate cos/sin of phi
-      float cos_phi = cos(phi);
-      float sin_phi = sin(phi);
+      double cos_phi = cos(phi);
+      double sin_phi = sin(phi);
 
       // convert from polar to cartesian coordinates
-      float px = crop(rho * cos_phi, lim);
-      float py = crop(-rho * sin_phi, lim);
+      double px = crop(rho * cos_phi, lim);
+      double py = crop(-rho * sin_phi, lim);
 
       // initialize state
       x_ << px, py, 0, 0, 0;
@@ -110,8 +110,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       // initialize position state wiht Lidar measurements
-      float px = crop(meas_package.raw_measurements_(0), lim);
-      float py = crop(meas_package.raw_measurements_(1), lim);
+      double px = crop(meas_package.raw_measurements_(0), lim);
+      double py = crop(meas_package.raw_measurements_(1), lim);
 
       x_ << px, py, 0, 0, 0;
       // set initial timestamp
@@ -127,7 +127,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    *  Prediction
    ****************************************************************************/
   // compute the time elapsed between the current and previous measurements
-  float dt = (meas_package.timestamp_ - time_us_) / 1000000.0;	// dt - expressed in seconds
+  double dt = (meas_package.timestamp_ - time_us_) / 1000000.0;	// dt - expressed in seconds
   time_us_ = meas_package.timestamp_;
   // make sure dt is not 0
   dt = crop(dt, lim * lim);
@@ -195,6 +195,44 @@ void UKF::Prediction(double delta_t) {
   /*****************************************************************************
    *  Predict Sigma Points
    ****************************************************************************/
+  for(int i = 0; i < Xsig_aug.cols(); i++) {
+    double px = Xsig_aug(0,i);
+    double py = Xsig_aug(1,i);
+    double v = Xsig_aug(2,i);
+    double psi = Xsig_aug(3,i);
+    double psi_dot = Xsig_aug(4,i);
+    double v_a = Xsig_aug(5,i);
+    double v_psi = Xsig_aug(6,i);
+
+    double px_delta = 0.0f;
+    double py_delta = 0.0f;
+    double v_delta = 0.0f;
+    double psi_delta = psi_dot * delta_t;
+    double psi_dot_delta = 0.0f;
+
+    //avoid division by zero
+    if(fabs(psi_dot) > 1e-3) {
+      px_delta = (v / psi_dot) * (sin(psi + psi_dot * delta_t) - sin(psi));
+      py_delta = (v / psi_dot) * (-cos(psi + psi_dot * delta_t) + cos(psi));
+    } else {
+      px_delta = v * cos(psi) * delta_t;
+      py_delta = v * sin(psi) * delta_t;
+    }
+
+    double dt2 = delta_t * delta_t;
+    double px_noise = (dt2 / 2) * cos(psi) * v_a;
+    double py_noise = (dt2 / 2) * sin(psi) * v_a;
+    double v_noise = delta_t * v_a;
+    double psi_noise = (dt2 / 2) * v_psi;
+    double psi_dot_noise = delta_t * v_psi;
+
+    //write predicted sigma points into right column
+    Xsig_pred_(0, i) = px + px_delta + px_noise;
+    Xsig_pred_(1, i) = py + py_delta + py_noise;
+    Xsig_pred_(2, i) = v + v_delta + v_noise;
+    Xsig_pred_(3, i) = psi + psi_delta + psi_noise;
+    Xsig_pred_(4, i) = psi_dot + psi_dot_delta + psi_dot_noise;
+  }
 
   /*****************************************************************************
    *  Predict Mean and Covariance
