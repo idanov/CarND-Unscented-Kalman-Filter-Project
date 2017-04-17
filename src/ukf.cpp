@@ -126,11 +126,28 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   /*****************************************************************************
    *  Prediction
    ****************************************************************************/
+  // compute the time elapsed between the current and previous measurements
+  float dt = (meas_package.timestamp_ - time_us_) / 1000000.0;	// dt - expressed in seconds
+  time_us_ = meas_package.timestamp_;
+  // make sure dt is not 0
+  dt = crop(dt, lim * lim);
+
+  Prediction(dt);
 
   /*****************************************************************************
    *  Update
    ****************************************************************************/
+  if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+    // Radar updates
+    UpdateRadar(meas_package);
+  } else {
+    // Laser updates
+    UpdateLidar(meas_package);
+  }
 
+  // print the output
+  cout << "x_ = " << x_ << endl;
+  cout << "P_ = " << P_ << endl;
 }
 
 /**
