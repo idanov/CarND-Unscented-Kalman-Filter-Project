@@ -36,10 +36,10 @@ UKF::UKF() {
   P_.setIdentity(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 0.5;
+  std_a_ = 1.9;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.5;
+  std_yawdd_ = 0.56;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -229,8 +229,8 @@ void UKF::Prediction(double delta_t) {
     Xsig_pred_(0, i) = px + px_delta + px_noise;
     Xsig_pred_(1, i) = py + py_delta + py_noise;
     Xsig_pred_(2, i) = v + v_delta + v_noise;
-    Xsig_pred_(3, i) = psi + psi_delta + psi_noise;
-    Xsig_pred_(4, i) = psi_dot + psi_dot_delta + psi_dot_noise;
+    Xsig_pred_(3, i) = angleNorm(psi + psi_delta + psi_noise);
+    Xsig_pred_(4, i) = angleNorm(psi_dot + psi_dot_delta + psi_dot_noise);
   }
 
   /*****************************************************************************
@@ -360,7 +360,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   VectorXd z_err = z - z_pred;
   z_err(1) = angleNorm(z_err(1));
   x_ += K * z_err;
-  P_ -= K * S * K.transpose(); 
+  P_ -= K * S * K.transpose();
   /****************************************************************************
    * Calculate NIS
    ***************************************************************************/
