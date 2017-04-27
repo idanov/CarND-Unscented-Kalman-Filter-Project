@@ -137,6 +137,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   // make sure dt is not 0
   dt = crop(dt, lim * lim);
 
+  while(dt > 0.1) {
+    const double max_dt = 0.05;
+    Prediction(max_dt);
+    dt -= max_dt;
+  }
   Prediction(dt);
 
   /*****************************************************************************
@@ -144,12 +149,20 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    ****************************************************************************/
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
-    UpdateRadar(meas_package);
+    if(use_radar_) {
+      UpdateRadar(meas_package);
+    }
   } else {
     // Laser updates
-    UpdateLidar(meas_package);
+    if(use_laser_) {
+      UpdateLidar(meas_package);
+    }
   }
 
+  if(isnan(x_(0))) {
+    cout << "UKF failed with measurement from sensor: " << meas_package.sensor_type_ << endl;
+    exit(1);
+  }
   // print the output
   cout << "x_ = " << x_ << endl;
   cout << "P_ = " << P_ << endl;
