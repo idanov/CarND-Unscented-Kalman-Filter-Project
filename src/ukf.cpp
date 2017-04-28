@@ -159,7 +159,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
   }
 
-  if(isnan(x_(0))) {
+  if(std::isnan(x_(0))) {
     cout << "UKF failed with measurement from sensor: " << meas_package.sensor_type_ << endl;
     exit(1);
   }
